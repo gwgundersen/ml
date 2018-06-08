@@ -7,9 +7,8 @@ For proofs of Bishop's updates, see Deisenroth, Faisal, Ong, 2018, chapter 12,
 "Density estimation with Gaussian mixture models".
 ============================================================================="""
 
-import datasets
 import numpy as np
-import plotter
+from   ml.cluster.gmm import viz
 
 # ------------------------------------------------------------------------------
 
@@ -17,6 +16,30 @@ class GMM():
 
     def __init__(self, n_components):
         self.K = n_components
+
+# ------------------------------------------------------------------------------
+
+    def fit(self, X, n_iters=50):
+        """
+        Performs EM inference on a mixture of Gaussians.
+
+        :param X: Data with shape (N, D).
+        :return:  None.
+        """
+        μs, Σs, πs = self.init_params(X, self.K)
+        log_likes = []
+
+        for i in range(n_iters):
+            resp = self.e_step(X, self.K, μs, Σs, πs)
+            μs, Σs, πs = self.m_step(X, self.K, resp)
+            self.means, self.covariances, self.weights = μs, Σs, πs
+
+            log_likes.append(self.log_likelihood(X, μs, Σs, πs))
+            if i % 10 == 0:
+                viz.plot_gmm(X, self.predict(X), self.means, self.covariances,
+                             _fpath(i+1))
+
+        viz.plot_log_likelihood(log_likes, _fpath('log_likelihoods'))
 
 # ------------------------------------------------------------------------------
 
@@ -36,25 +59,6 @@ class GMM():
                     assign_n = k
             assignments[n] = assign_n
         return assignments
-
-# ------------------------------------------------------------------------------
-
-    def inference(self, X, n_iters=100):
-        """
-        Performs EM inference on a mixture of Gaussians.
-
-        :param X: Data with shape (N, D).
-        :return:  None.
-        """
-        μs, Σs, πs = self.init_params(X, self.K)
-
-        for i in range(n_iters):
-            resp = self.e_step(X, self.K, μs, Σs, πs)
-            μs, Σs, πs = self.m_step(X, self.K, resp)
-            # print(self.log_likelihood(X, μs, Σs, πs))
-
-        # The accessible values should have standard names (cf. scikit-learn).
-        self.means, self.covariances, self.weights = μs, Σs, πs
 
 # ------------------------------------------------------------------------------
 
@@ -213,9 +217,29 @@ class GMM():
 
 # ------------------------------------------------------------------------------
 
-if __name__ == '__main__':
-    X = datasets.load('faithful')
-    gmm = GMM(n_components=2)
-    gmm.inference(X)
-    Y = gmm.predict(X)
-    plotter.plot_gmm(X, Y, gmm.means, gmm.covariances)
+    def sample(self, dim, n_samples):
+        """
+        Sample from a Gaussian mixture model.
+        :param dim:
+        :param n_samples:
+        :return:
+        """
+        ks = np.random.choice(range(self.K), p=self.weights, size=n_samples)
+
+        X_sim = np.zeros((n_samples, dim))
+        Y_sim = np.zeros(n_samples)
+
+        for i, k in enumerate(ks):
+            samp = np.random.multivariate_normal(self.means[k],
+                                                 self.covariances[k])
+            X_sim[i] = samp
+            Y_sim[i] = k
+        return X_sim, Y_sim
+
+# ------------------------------------------------------------------------------
+
+def _fpath(*kwargs):
+    """Utility function for naming figures.
+    """
+    name = '_'.join([str(i) for i in kwargs])
+    return 'ml/cluster/gmm/figures/%s.png' % name

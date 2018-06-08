@@ -3,25 +3,24 @@ K-means. See Bishop 9.1.
 ============================================================================="""
 
 import numpy as np
-from   ml import viz
+from   ml.cluster.kmeans import viz
 
 # ------------------------------------------------------------------------------
 
 class KMeans():
 
-    def __init__(self, n_components, figs_dir=None):
+    def __init__(self, n_components, init_means=None):
         """
         :param n_components: The number of clusters K.
-        :param figs_dir:     Directory in which to save intermediate figures of
-                             the algorithms' progress.
+        :param init_means:   Initial centroids if desired.
         :return:             None.
         """
         self.K = n_components
-        self.figs_dir = figs_dir
+        self.means = init_means
 
 # ------------------------------------------------------------------------------
 
-    def fit(self, X, n_iters=1000):
+    def fit(self, X, n_iters=5):
         """
         Iteratively assign data points to their nearest centroids and then
         update the cluster centroids based on the latest assignments.
@@ -30,29 +29,37 @@ class KMeans():
         the Euclidean distance N*K times on each iteration. And we have no
         guarantee of convergence.
 
-        :param X:        N observations with dimensionality D.
+        :param X:        N data points with dimensionality D.
         :param n_iters:  Number of iterations to run algorithm.
         :return:         None.
         """
         N, D = X.shape
 
         # Randomly initialize means.
-        self.centroids   = np.random.uniform(X.min(), X.max(), size=(self.K, D))
+        if type(self.means) is not np.ndarray:
+            self.means = np.random.uniform(X.min(), X.max(), size=(self.K, D))
         self.assignments = np.random.randint(0, self.K, size=(N))
+
+        preds = np.zeros(X.shape[0])
+        viz.plot_clusters(X, self.means, preds, _fpath(0), True, init=True)
+        Js = []
 
         for i in range(n_iters):
             self._e_step(X)
-            if i % 100 == 0 and self.figs_dir is not None:
-                fname = '%s/kmeans_%s.png' % (self.figs_dir, i)
-                preds = self.predict(X)
-                viz.plot_kmeans(X, self.centroids, preds, fname)
+            viz.plot_clusters(X, self.means, self.predict(X),
+                              _fpath(i + 1, 'a'), True)
             self._m_step(X)
+            viz.plot_clusters(X, self.means, self.predict(X),
+                              _fpath(i + 1, 'b'), False)
+            Js.append(self._cost(X))
+
+        viz.plot_learning_curve(Js, _fpath('learning_curve'))
 
 # ------------------------------------------------------------------------------
 
     def predict(self, X):
         """
-        :param X_: N observations with dimensionality D.
+        :param X_: N data points with dimensionality D.
         :return:   An N-vector of integers in [0, K] representing predicted
                    cluster assignments.
         """
@@ -61,7 +68,7 @@ class KMeans():
         predictions = np.zeros(N)
         for n, x in enumerate(X):
             min_dist = np.inf
-            for k, centroid in enumerate(self.centroids):
+            for k, centroid in enumerate(self.means):
                 dist = np.linalg.norm(x - centroid)
                 if dist <= min_dist:
                     min_dist = dist
@@ -75,14 +82,14 @@ class KMeans():
         """
         For each data point, assign it to the cluster with the closest mean.
 
-        :param X: N observations with dimensionality D.
+        :param X: N data points with dimensionality D.
         :return:  None.
         """
         for n, x in enumerate(X):
             min_dist = np.inf
-            for k, centroid in enumerate(self.centroids):
+            for k, mean in enumerate(self.means):
                 # Bishop, eq 9.2.
-                dist = np.linalg.norm(x - centroid)
+                dist = self._dist(x, mean)
                 if dist <= min_dist:
                     min_dist   = dist
                     new_assign = k
@@ -94,7 +101,7 @@ class KMeans():
         """
         For each cluster, re-compute the mean based on the latest assignments.
 
-        :param X: N observations with dimensionality D.
+        :param X: N data points with dimensionality D.
         :return: None
         """
         for k in range(self.K):
@@ -103,4 +110,38 @@ class KMeans():
             if Xk.size == 0:
                 continue
             # Bishop, eq 9.4.
-            self.centroids[k] = Xk.sum(axis=0) / len(Xk)
+            self.means[k] = Xk.sum(axis=0) / len(Xk)
+
+# ------------------------------------------------------------------------------
+
+    def _cost(self, X):
+        """
+        :param X: N data points with dimensionality D.
+        :return:  Total loss for K-means (square of Euclidean norm).
+        """
+        J = 0
+        for k, mean in zip(range(self.K), self.means):
+            inds = self.assignments == k
+            Xk   = X[inds]
+            for x in Xk:
+                J += self._dist(x, mean)
+        return J
+
+# ------------------------------------------------------------------------------
+
+    def _dist(self, x1, x2):
+        """
+        :param x1: A data point.
+        :param x2: A data point.
+        :return:   Squared Euclidean distance between the two data points.
+        """
+        l2 = np.linalg.norm(x1 - x2)
+        return l2**2
+
+# ------------------------------------------------------------------------------
+
+def _fpath(*kwargs):
+    """Utility function for naming figures.
+    """
+    name = '_'.join([str(i) for i in kwargs])
+    return 'ml/cluster/kmeans/figures/%s.png' % name

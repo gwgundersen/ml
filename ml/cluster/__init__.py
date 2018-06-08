@@ -2,4 +2,4 @@
 Interface for cluster module.
 ============================================================================="""
 
-from ml.cluster.kmeans.kmeans import KMeans
+from   ml.cluster.kmeans.model import KMeans

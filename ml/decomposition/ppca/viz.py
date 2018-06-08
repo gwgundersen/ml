@@ -1,11 +1,11 @@
+"""=============================================================================
+Utility functions for visualizing probabilistic PCA.
+============================================================================="""
+
 import matplotlib.cm as plt_cm
 import matplotlib.colors as plt_col
 import matplotlib.pyplot as plt
 import numpy as np
-import sklearn.datasets as ds
-
-from ml.decomposition.pca.ppca import PPCA
-
 
 # ------------------------------------------------------------------------------
 
@@ -23,15 +23,4 @@ def plot_scatter(x, classes, ax=None):
 
     ax.scatter(x0, x1, color=colors, s=20)
 
-# ------------------------------------------------------------------------------
-
-iris         = ds.load_iris()
-iris_y       = np.transpose(iris.data)
-iris_classes = iris.target
-
-ppca = PPCA(var=0.1)
-# ppca.fit(iris_y)
-ppca.fit(iris_y)
-
-plot_scatter(ppca.transform(), iris_classes)
-plt.show()
+    plt.savefig('ml/decomposition/ppca/ppca.png')

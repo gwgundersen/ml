@@ -1,16 +1,14 @@
 """=============================================================================
-Old Faithful eruptions dataset.
+The Iris dataset.
 ============================================================================="""
 
 import numpy as np
-
-from   ml.normalization import feature_scaling
+from   sklearn import datasets
 
 # ------------------------------------------------------------------------------
 
 def load():
-    """
-    :return: Old faithful reuprtions data with shape (272, 2).
-    """
-    X = np.loadtxt('ml/datasets/oldfaithful/data', skiprows=1)[:, 1:]
-    return feature_scaling(X)
+    iris = datasets.load_iris()
+    x    = np.transpose(iris.data)
+    y    = iris.target
+    return x, y
