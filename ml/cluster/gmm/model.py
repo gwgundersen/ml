@@ -19,7 +19,7 @@ class GMM():
 
 # ------------------------------------------------------------------------------
 
-    def fit(self, X, n_iters=50):
+    def fit(self, X, n_iters=100):
         """
         Performs EM inference on a mixture of Gaussians.
 
@@ -227,14 +227,35 @@ class GMM():
         ks = np.random.choice(range(self.K), p=self.weights, size=n_samples)
 
         X_sim = np.zeros((n_samples, dim))
-        Y_sim = np.zeros(n_samples)
+        Y_sim = np.zeros(n_samples)  # Cluster assignments.
 
         for i, k in enumerate(ks):
-            samp = np.random.multivariate_normal(self.means[k],
-                                                 self.covariances[k])
+            μk, Σk = self.means[k], self.covariances[k]
+            samp = np.random.multivariate_normal(μk, Σk)
             X_sim[i] = samp
             Y_sim[i] = k
         return X_sim, Y_sim
+
+# ------------------------------------------------------------------------------
+
+    def q(self, X):
+        """
+        :param Xi:
+        :param Yi:
+        :return:
+        """
+        N, D = X.shape
+        πs = self.weights
+        mixtures = np.zeros((self.K, N))
+        for k in range(self.K):
+            mix = np.zeros(N)
+            for i, x in enumerate(X):
+                μk, Σk = self.means[k], self.covariances[k]
+                proba = πs[k] * self.gaussian(x, μk, Σk)
+                mix[i] = proba
+            mixtures[k] = mix
+        assert len(mixtures) == self.K
+        return np.array(mixtures).sum(axis=0)
 
 # ------------------------------------------------------------------------------
 
@@ -243,3 +264,4 @@ def _fpath(*kwargs):
     """
     name = '_'.join([str(i) for i in kwargs])
     return 'ml/cluster/gmm/figures/%s.png' % name
+

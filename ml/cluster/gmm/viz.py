@@ -24,7 +24,7 @@ def plot_log_likelihood(Y, fname):
 def plot_gmm(X, Y_, means, covariances, fname):
 
     fig, ax = plt.subplots(1, 1)
-    colors = ['r', 'b']
+    colors = ['r', 'b', 'g']
 
     for i, (mean, covar) in enumerate(zip(means, covariances)):
         v, w = np.linalg.eigh(covar)
@@ -49,14 +49,12 @@ def plot_gmm(X, Y_, means, covariances, fname):
 
         ax.add_artist(ell)
 
-    x = X[:, 0]
-    y = X[:, 1]
-    eps = 0.1
-    plt.xlim(x.min() - eps, x.max() + eps)
-    plt.ylim(y.min() - eps, y.max() + eps)
+    plt.xlim(-0.25, 1.25)
+    plt.ylim(-0.25, 1.25)
 
     plt.locator_params(nbins=4)
     plt.gca().set_aspect('equal', adjustable='box')
+    plt.draw()
     plt.savefig(fname)
     plt.clf()
 
