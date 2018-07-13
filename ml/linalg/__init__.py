@@ -104,5 +104,3 @@ def norm_columns(X):
     X /= np.linalg.norm(X, 2, axis=0)
     assert np.allclose(np.linalg.norm(X, 2, axis=0), 1)
     return X
-
-
