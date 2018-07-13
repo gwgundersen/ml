@@ -10,12 +10,7 @@ import scipy
 
 from   ml.model import Model
 from   ml import linalg as LA
-
-# ------------------------------------------------------------------------------
-
-inv  = np.linalg.inv
-sqrt = scipy.linalg.sqrtm
-mm   = np.matmul
+from   ml.linalg import inv, mm, sqrt
 
 # ------------------------------------------------------------------------------
 
@@ -30,8 +25,8 @@ class CCA(Model):
     def fit(self, Xa, Xb):
         """Fits CCA model parameters using default or user-specified method.
 
-        :param Xa: Observations with shape (p_dim, n_samps).
-        :param Xb: Observations with shape (q_dim, n_samps).
+        :param Xa: Observations with shape (n_samps, p_dim).
+        :param Xb: Observations with shape (n_samps, q_dim).
         :return:   Class instance.
         """
         # Uurtio: "Throughout this tutorial, we assume that the variables are
@@ -65,9 +60,9 @@ class CCA(Model):
 
     def transform(self, Xa=None, Xb=None):
         """
-        :param Xa:
-        :param Xb:
-        :return:
+        :param Xa: Observations with shape (n_samps, p_dim).
+        :param Xb: Observations with shape (n_samps, q_dim).
+        :return:   Embeddings for each data view.
         """
         if Xa is None:
             Xa = self.Xa
@@ -84,8 +79,8 @@ class CCA(Model):
         """
         Fit model and then transforms data using learned model.
 
-        :param Xa: Observations with shape (p_dim, n_samps).
-        :param Xb: Observations with shape (q_dim, n_samps).
+        :param Xa: Observations with shape (n_samps, p_dim).
+        :param Xb: Observations with shape (n_samps, q_dim).
         :return:   Result of self.transform() function.
         """
         self.fit(Xa, Xb)
@@ -96,8 +91,8 @@ class CCA(Model):
     def _fit_standard_eigval_prob(self, Xa, Xb, Caa, Cab, Cba, Cbb):
         """Fits CCA model parameters using the standard eigenvalue problem.
 
-        :param Xa: Observations with shape (p_dim, n_samps).
-        :param Xb: Observations with shape (q_dim, n_samps).
+        :param Xa: Observations with shape (n_samps, p_dim).
+        :param Xb: Observations with shape (n_samps, q_dim).
         :return:   None.
         """
         N, p = Xa.shape
@@ -143,11 +138,13 @@ class CCA(Model):
         Za = LA.norm_columns(mm(Xa, Wa))
         Zb = LA.norm_columns(mm(Xb, Wb))
         CCs = np.zeros(r)
+        BJCCs = self._bach_jordan_ccs(Xa, Xb)
         for i in range(r):
             za = Za[:, i]
             zb = Zb[:, i]
             CCs[i] = np.dot(za, zb)
         assert np.allclose(CCs, rhos)
+        assert np.allclose(CCs, BJCCs)
 
         return Wa, Wb
 
@@ -156,16 +153,16 @@ class CCA(Model):
     def _fit_svd(self, Xa, Xb, Caa, Cab, Cbb):
         """Fits CCA model parameters using SVD.
 
-        :param Xa: Observations with shape (p_dim, n_samps).
-        :param Xb: Observations with shape (q_dim, n_samps).
+        :param Xa: Observations with shape (n_samps, p_dim).
+        :param Xb: Observations with shape (n_samps, q_dim).
         :return:   None.
         """
         N, p = Xa.shape
         N, q = Xb.shape
         r    = min(LA.rank(Xa), LA.rank(Xb))
 
-        Caa_sqrt = sqrt(Caa)
-        Cbb_sqrt = sqrt(Cbb)
+        Caa_sqrt = LA.sqrt(Caa)
+        Cbb_sqrt = LA.sqrt(Cbb)
 
         Caa_sqrt_inv = inv(Caa_sqrt)
         Cbb_sqrt_inv = inv(Cbb_sqrt)
@@ -184,7 +181,63 @@ class CCA(Model):
         # canonical correlations.
         Za = LA.norm_columns(mm(Xa, Wa))
         Zb = LA.norm_columns(mm(Xb, Wb))
-        for s, za, zb in zip(S, Za.T, Zb.T):
-            assert np.isclose(np.dot(za, zb), s)
+        BJCCs = self._bach_jordan_ccs(Xa, Xb)
+        for s, bj, za, zb in zip(S, BJCCs, Za.T, Zb.T):
+            assert np.isclose(s,  np.dot(za, zb))
+            assert np.isclose(bj, np.dot(za, zb))
 
         return Wa, Wb
+
+# ------------------------------------------------------------------------------
+
+    def _bach_jordan_ccs(self, X1, X2):
+        """Returns the canonical correlations according to Bach and Jordan
+        (2006). Used for sanity checking.
+
+        :param X1: Observations with shape (n_samps, p_dim).
+        :param X2: Observations with shape (n_samps, q_dim).
+        :return:   Class instance.
+        """
+        N, m1 = X1.shape
+        N, m2 = X2.shape
+        m     = min(m1, m2)
+
+        C   = LA.cov(X1, X2)
+        C11 = C[:m1, :m1]
+        C22 = C[m1:, m1:]
+        C12 = C[:m1, m1:]
+        C21 = C[m1:, :m1]
+
+        M = mm(mm(sqrt(inv(C11)), C12), sqrt(inv(C22)))
+        assert M.shape == (m1, m2)
+
+        # NumPy documentation:
+        #
+        #     U:  matrix having left singular vectors as columns.
+        #     Vh: matrix having right singular vectors as rows.
+        #
+        U, S, Vh = LA.svd(M)
+
+        # Left singular vectors as column vectors.
+        V1 = U.T[:m].T
+        # Right singular vectors as column vectors.
+        V2 = Vh[:m].T
+
+        U1 = mm(sqrt(inv(C11)), V1)
+        U2 = mm(sqrt(inv(C22)), V2)
+        assert U1.shape == (m1, m)
+        assert U2.shape == (m2, m)
+
+        assert np.allclose(mm(mm(U1.T, C11), U1), np.eye(m))
+        assert np.allclose(mm(mm(U2.T, C22), U2), np.eye(m))
+
+        P = mm(mm(U2.T, C21), U1)
+        # P is an (q, m)-diagonal matrix.
+        P_are0s = np.isclose(P, 0)
+        I_are0s = np.eye(m) == 0
+        assert np.allclose(P_are0s, I_are0s)
+
+        # Canonical correlations are on the diagonal of P.
+        CCs = np.diag(P)
+
+        return CCs
