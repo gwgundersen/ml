@@ -16,6 +16,10 @@ A didactic Python library with well-commented and annotated implementations of m
 - [Principal component analysis]
 - [Probabilistic principal component analysis]
 - Factor analysis (TODO)
+
+#### `ml.nn`
+
+- [Feedforward neural network](https://github.com/gwgundersen/ml/blob/master/ml/nn/nn.py)
     
 #### `ml.linalg`
 
