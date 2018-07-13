@@ -3,7 +3,6 @@ Canonical correlation analysis, a complete example.
 ============================================================================="""
 
 import matplotlib.pyplot as plt
-from   sklearn.cross_decomposition import CCA as skCCA
 
 from   ml.datasets import load_paired
 from   ml.decomposition.cca.model import CCA
@@ -11,9 +10,6 @@ from   ml.decomposition.cca.model import CCA
 # ------------------------------------------------------------------------------
 
 X1, X2 = load_paired(exact=False)
-
-# skcca = skCCA(n_components=2)
-# skcca.fit(X1, X2)
 
 cca = CCA(n_components=2, use_svd=True)
 Z1, Z2 = cca.fit_transform(X1, X2)
