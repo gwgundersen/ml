@@ -11,11 +11,10 @@ A didactic Python library with well-commented and annotated implementations of m
 
 #### `ml.decomposition`
 
-- [Canonical correlation analysis]
+- [Canonical correlation analysis](https://github.com/gwgundersen/ml/tree/master/ml/decomposition/cca)
 - Factor analysis (TODO)
-- [Principal component analysis]
-- [Probabilistic principal component analysis]
-- Factor analysis (TODO)
+- Principal component analysis (TODO)
+- [Probabilistic principal component analysis](https://github.com/gwgundersen/ml/tree/master/ml/decomposition/ppca)
 
 #### `ml.nn`
 
