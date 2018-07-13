@@ -77,6 +77,8 @@ class PPCA(Model):
         self.mu    = mu_ml
         self.Sigma = Sigma_ml
 
+        return self
+
 # ------------------------------------------------------------------------------
 
     def transform(self, X=None):
@@ -99,3 +101,15 @@ class PPCA(Model):
         M = transpose(self.W).dot(self.W) + self.Sigma * np.eye(self.W.shape[1])
         Z = inv(M).dot(transpose(self.W)).dot(X - self.mu)
         return Z
+
+# ------------------------------------------------------------------------------
+
+    def fit_transform(self, X):
+        """
+        Fit model and then transforms data using learned model.
+
+        :param X: Observations with shape (n_feats, n_samps).
+        :return:  Result of self.transform() function.
+        """
+        self.fit(X)
+        return self.transform()
