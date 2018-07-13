@@ -1,11 +1,8 @@
 """=============================================================================
-Canonical correlation analysis. See:
+Canonical correlation analysis. See paper below for comment references:
 
     A Tutorial on Canonical Correlation Methods
     https://arxiv.org/pdf/1711.02391.pdf
-
-    See:
-    https://stats.stackexchange.com/questions/77287/
 ============================================================================="""
 
 import numpy as np
