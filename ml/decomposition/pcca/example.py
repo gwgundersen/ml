@@ -11,7 +11,7 @@ from   ml.decomposition.pcca.model import PCCA
 
 X1, X2 = load_paired(N=10000, exact=False, mean_centered=True)
 
-pcca = PCCA(n_components=2, derivation='Murphy')
+pcca = PCCA(n_components=2)
 pcca.fit([X1, X2], n_iters=10)
 X1_, X2_ = pcca.sample(1000)
 
