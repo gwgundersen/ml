@@ -6,7 +6,6 @@ Probabilistic canonical correlation analysis. For references in comments:
 
     The EM algorithm for mixtures of factor analyzers.
     Ghahramani, Hinton (1996).
-
 ============================================================================="""
 
 import numpy as np
@@ -22,38 +21,29 @@ Normal = np.random.multivariate_normal
 
 class PCCA(Model):
 
-    def __init__(self, n_components, derivation='Bishop'):
+    def __init__(self, n_components):
         """
-        :param n_components:
-        :param derivation:
-        :return:
+        Initialize the probabilistic CCA model.
+
+        :param n_components: The dimensionality of the latent variable.
+        :return:             None.
         """
-        self.n_components = n_components
-
-        # The difference between Bishop and Murphy is that Bishop's derivation
-        # uses the Woodbury identity (see Ghahramani 1996), while Murphy's
-        # derivation does not specify how to compute the inverse. We implement
-        # this using NumPy's inverse function, `np.linalg.inv`.
-        DERIVATIONS = ['Bishop', 'Murphy']
-
-        if derivation not in DERIVATIONS:
-            msg = 'Supported derivations: %s' % ', '.join(DERIVATIONS)
-            raise AttributeError(msg)
-
-        if derivation == 'Bishop':
-            self.E_z_given_x   = _E_z_given_x_Bishop
-            self.E_zzT_given_x = _E_zzT_given_x_Bishop
-        else:
-            self.E_z_given_x   = _E_z_given_x_Murphy
-            self.E_zzT_given_x = _E_zzT_given_x_Murphy
+        self.n_components  = n_components
+        # In principle, we could support multiple derivations.
+        self.E_z_given_x   = _E_z_given_x_Murphy
+        self.E_zzT_given_x = _E_zzT_given_x_Murphy
 
 # ------------------------------------------------------------------------------
 
-    def fit(self, X, n_iters=100):
+    def fit(self, X, n_iters):
         """
-        :param X:
-        :param n_iters:
-        :return:
+        Fit the probabilistic CCA model using Expectation-Maximization.
+
+        :param X:       A joint density, represented as a sequence of datasets,
+                        each with N observations and p1- and p2-dimensions
+                        respectively.
+        :param n_iters: The number of EM iterations.
+        :return:        None.
         """
         assert type(X) is list or type(X) is tuple
         X1, X2 = X
@@ -70,7 +60,7 @@ class PCCA(Model):
         Lambda, Psi = self._init_params(p1, p2)
         for i in range(n_iters):
             print('Iter: %s' % i)
-            Lambda_new, Psi_new = self._em_step(X, Lambda, Psi, n, p, k)
+            Lambda_new, Psi_new = self._em_step(X, Lambda, Psi, n, k)
             Lambda = Lambda_new
             Psi    = Psi_new
 
@@ -85,6 +75,10 @@ class PCCA(Model):
 # ------------------------------------------------------------------------------
 
     def transform(self):
+        """
+        :return: The latent variable Z, estimated using the data and learned
+                 parameters.
+        """
         n = self.X.shape[0]
         Z = np.zeros((self.n_components, n))
         for i in range(n):
@@ -94,6 +88,12 @@ class PCCA(Model):
 # ------------------------------------------------------------------------------
 
     def sample(self, n):
+        """
+        Sample from the fitted probabilistic CCA model.
+
+        :param n: The number of samples.
+        :return:  Two views of n samples each.
+        """
         Z  = np.random.random((self.n_components, n))
 
         m1 = dot(self.Lambda1, Z)
@@ -113,8 +113,40 @@ class PCCA(Model):
 
 # ------------------------------------------------------------------------------
 
+    def _em_step(self, X, Lambda, Psi, n, k):
+        """
+        Perform Expectation–Maximization on the parameters Lambda and Psi. See
+        my blog post on factor analysis:
+
+        http://gregorygundersen.com/blog/2018/08/08/factor-analysis/
+
+        Or the papers referenced in the docstring for derivations.
+
+        Psi   : (p1 + p2) x (p1 + p2)
+        Lambda: (p1 + p2) x k
+        V     : (p1 + p2) x n
+        """
+        # Update Lambda.
+        # ======================================================================
+        Exp          = self.E_z_given_x(Lambda, Psi, X)
+        Lambda_lterm = dot(X, Exp.T)
+        Lambda_rterm = self.E_zzT_given_x(Lambda, Psi, X, k)
+        Lambda_star  = dot(Lambda_lterm, inv(Lambda_rterm))
+
+        # Update Psi.
+        # ======================================================================
+        Exp      = self.E_z_given_x(Lambda, Psi, X)
+        Psi_new  = dot(X, X.T) - dot(Lambda_star, dot(Exp, X.T))
+        Psi_star = 1./n * np.diag(np.diag(Psi_new))
+
+        return Lambda_star, Psi_star
+
+# ------------------------------------------------------------------------------
+
     def _init_params(self, p1, p2):
         """
+        :param p1: Dimensionality of the first view of data.
+        :param p2: Dimensionality of the second view of data.
         :return:
         """
         k = self.n_components
@@ -138,77 +170,13 @@ class PCCA(Model):
 
 # ------------------------------------------------------------------------------
 
-    def _em_step(self, X, Lambda, Psi, n, p, k):
-        """
-        Psi   : (p1 + p2) x (p1 + p2)
-        Lambda: (p1 + p2) x k
-        V     : (p1 + p2) x n
-        """
-        # Update Lambda.
-        # ======================================================================
-        Exp          = self.E_z_given_x(Lambda, Psi, X)
-        Lambda_lterm = dot(X, Exp.T)
-        Lambda_rterm = self.E_zzT_given_x(Lambda, Psi, X, k)
-        Lambda_star  = dot(Lambda_lterm, inv(Lambda_rterm))
-
-        # Update Psi.
-        # ======================================================================
-        Exp      = self.E_z_given_x(Lambda, Psi, X)
-        Psi_new  = dot(X, X.T) - dot(Lambda_star, dot(Exp, X.T))
-        Psi_star = 1./n * np.diag(np.diag(Psi_new))
-
-        return Lambda_star, Psi_star
-
-# ------------------------------------------------------------------------------
-
-def _E_z_given_x_Bishop(Lambda, Psi, x):
-    """
-    :param Lambda:
-    :param Psi:
-    :param x:
-    :return:
-    """
-    # 12.66, 12.67, 12.68
-    LT_P_L = np.dot(Lambda.T, np.dot(np.linalg.inv(Psi), Lambda))
-    G      = np.linalg.inv(np.eye(LT_P_L.shape[0]) + LT_P_L)
-    beta   = np.dot(G, np.dot(Lambda.T, np.linalg.inv(Psi)))
-    return np.dot(beta, x)
-
-# ------------------------------------------------------------------------------
-
-def _E_zzT_given_x_Bishop(Lambda, Psi, x, _):
-    """
-    :param Lambda:
-    :param Psi:
-    :param x:
-    :return:
-    """
-    LT_P_L = np.dot(Lambda.T, np.dot(np.linalg.inv(Psi), Lambda))
-    G      = np.linalg.inv(np.eye(LT_P_L.shape[0]) + LT_P_L)
-    E_z    =  _E_z_given_x_Bishop(Lambda, Psi, x)
-    return G + np.dot(E_z, E_z.T)
-
-# ------------------------------------------------------------------------------
-
-def _E_z_given_x_Murphy(L, P, x):
-    """
-    :param L:
-    :param P:
-    :param x:
-    :return:
-    """
+def _E_z_given_x_Murphy(L, P, X):
     beta = dot(L.T, inv(dot(L, L.T) + P))
-    return dot(beta, x)
+    return dot(beta, X)
 
 # ------------------------------------------------------------------------------
 
-def _E_zzT_given_x_Murphy(L, P, x, k):
-    """
-    :param L:
-    :param P:
-    :param x:
-    :param k:
-    :return:
-    """
+def _E_zzT_given_x_Murphy(L, P, X, k):
+    _, N = X.shape
     beta = dot(L.T, inv(dot(L, L.T) + P))
-    return np.eye(k) - dot(beta, L) + dot(dot(beta, x), dot(x.T, beta.T))
+    return N * (np.eye(k) - dot(beta, L)) + dot(dot(beta, X), dot(X.T, beta.T))
