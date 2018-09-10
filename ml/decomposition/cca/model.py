@@ -6,7 +6,6 @@ Canonical correlation analysis. See paper below for comment references:
 ============================================================================="""
 
 import numpy as np
-import scipy
 
 from   ml.model import Model
 from   ml import linalg as LA

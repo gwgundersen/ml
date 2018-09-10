@@ -3,30 +3,33 @@ A dataset with paired samples.
 ============================================================================="""
 
 import numpy as np
+from   ml.normalization import mean_center
 
 # ------------------------------------------------------------------------------
 
-def load(exact=False):
-    N, P, Q = 60, 4, 3
+Normal = np.random.multivariate_normal
 
-    a1 = np.random.normal(loc=0, scale=1, size=(N,))
-    a2 = np.random.normal(loc=0, scale=1, size=(N,))
-    a3 = np.random.normal(loc=0, scale=1, size=(N,))
-    a4 = np.random.normal(loc=0, scale=1, size=(N,))
+# ------------------------------------------------------------------------------
 
-    Xa = np.vstack([a1, a2, a3, a4]).T
-    assert Xa.shape == (N, P)
+def load(N=60, exact=False, mean_centered=False):
+    P, Q = 4, 3
+
+    amean = np.zeros(P)
+    acov  = np.eye(P)
+    Xa    = Normal(mean=amean, cov=acov, size=N)
 
     if exact:
-        b1 = a1  + np.ones(N)*2
-        b2 = a2  + np.ones(N)*3
-        b3 = -a3 + np.ones(N)*4
+        Xb = Xa * 10
     else:
-        b1 = a1  + np.random.normal(loc=0, scale=0.2, size=(N,))
-        b2 = a2  + np.random.normal(loc=0, scale=0.4, size=(N,))
-        b3 = -a3 + np.random.normal(loc=0, scale=0.3, size=(N,))
+        bmean = np.ones(Q) * 2
+        bcov  = np.eye(Q) * 1.5
+        bcov[0, 1] = bcov[0, 2] = bcov[1, 2] = 10
+        Xb    = Normal(mean=bmean, cov=bcov, size=N)
 
-    Xb = np.vstack([b1, b2, b3]).T
+    if mean_centered:
+        Xa = mean_center(Xa)
+        Xb = mean_center(Xb)
+
+    assert Xa.shape == (N, P)
     assert Xb.shape == (N, Q)
-
     return Xa, Xb

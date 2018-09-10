@@ -6,25 +6,19 @@ import matplotlib.pyplot as plt
 
 from   ml.datasets import load_paired
 from   ml.decomposition.pcca.model import PCCA
-from ml.decomposition.cca.model import CCA
 
 # ------------------------------------------------------------------------------
 
-X1, X2 = load_paired(exact=False)
+X1, X2 = load_paired(N=10000, exact=False, mean_centered=True)
 
-pcca = PCCA(n_components=2)
-pcca.fit_transform(X1, X2)
+pcca = PCCA(n_components=2, derivation='Murphy')
+pcca.fit([X1, X2], n_iters=10)
+X1_, X2_ = pcca.sample(1000)
 
-# Z1, Z2 = pcca.fit_transform(X1, X2)
-#
-# fig, ax = plt.subplots()
-# ax.scatter(Z1[:, 0], Z1[:, 1], c='blue')
-# ax.scatter(Z2[:, 0], Z2[:, 1], c='red')
-#
-# for i, txt in enumerate(range(len(Z1))):
-#     ax.annotate(txt, (Z1[:, 0][i], Z1[:, 1][i]), color='blue')
-#
-# for i, txt in enumerate(range(len(Z2))):
-#     ax.annotate(txt, (Z2[:, 0][i], Z2[:, 1][i]), color='red')
-#
-# plt.show()
+fig, ax = plt.subplots()
+ax.scatter(X1[:, 0], X1[:, 1], c='red', marker='.')
+ax.scatter(X2[:, 0], X2[:, 1], c='blue', marker='.')
+ax.scatter(X1_[:, 0], X1_[:, 1], c='orange', marker='*')
+ax.scatter(X2_[:, 0], X2_[:, 1], c='cyan', marker='*')
+
+plt.show()
