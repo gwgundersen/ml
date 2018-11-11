@@ -11,8 +11,7 @@ Normal = np.random.multivariate_normal
 
 # ------------------------------------------------------------------------------
 
-def load(N=60, exact=False, mean_centered=False):
-    P, Q = 4, 3
+def load(N=60, P=4, Q=3, exact=False, mean_centered=False):
 
     amean = np.zeros(P)
     acov  = np.eye(P)

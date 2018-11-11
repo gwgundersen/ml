@@ -74,12 +74,12 @@ class PCCA(Model):
 
 # ------------------------------------------------------------------------------
 
-    def transform(self):
+    def estimate_z(self):
         """
         :return: The latent variable Z, estimated using the data and learned
                  parameters.
         """
-        n = self.X.shape[0]
+        n = self.X.shape[1]
         Z = np.zeros((self.n_components, n))
         for i in range(n):
             Z[:, i] = self.E_z_given_x(self.Lambda, self.Psi, self.X[:, i])
@@ -94,7 +94,7 @@ class PCCA(Model):
         :param n: The number of samples.
         :return:  Two views of n samples each.
         """
-        Z  = np.random.random((self.n_components, n))
+        Z  = self.estimate_z()
 
         m1 = dot(self.Lambda1, Z)
         m2 = dot(self.Lambda2, Z)
@@ -171,7 +171,10 @@ class PCCA(Model):
 # ------------------------------------------------------------------------------
 
 def _E_z_given_x_Murphy(L, P, X):
-    beta = dot(L.T, inv(dot(L, L.T) + P))
+    print('pre-inv')
+    invLL = inv(dot(L, L.T) + P)
+    print('post-inv')
+    beta  = dot(L.T, invLL)
     return dot(beta, X)
 
 # ------------------------------------------------------------------------------

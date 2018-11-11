@@ -11,7 +11,7 @@ A didactic Python library with well-commented and annotated implementations of m
 
 #### `ml.decomposition`
 
-- Factor analysis (TODO)
+- [Factor analysis](https://github.com/gwgundersen/ml/tree/master/ml/decomposition/fa)
 - Principal component analysis (TODO)
 - [Probabilistic principal component analysis](https://github.com/gwgundersen/ml/tree/master/ml/decomposition/ppca/)
 - [Canonical correlation analysis](https://github.com/gwgundersen/ml/tree/master/ml/decomposition/cca/)
