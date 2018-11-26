@@ -7,6 +7,11 @@ import scipy
 
 # ------------------------------------------------------------------------------
 
+from ml.linalg.rinv import rinv
+from ml.linalg.rsvd import rsvd
+
+# ------------------------------------------------------------------------------
+
 # TODO: Implement yourself.
 def mm(A, B):
     return np.matmul(A, B)

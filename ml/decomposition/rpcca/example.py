@@ -18,17 +18,19 @@ print('Data loaded')
 
 pcca = PCCA(n_components=2)
 s = time.time()
-pcca.fit([X1, X2], n_iters=100)
+pcca.fit([X1, X2], n_iters=1000)
 print('Time to fit: %s' % str(time.time() - s))
+
+print(pcca.nlls)
 
 # pcca = PCCA(n_components=2, rank_k=k)
 # s = time.time()
 # pcca.fit([X1, X2], n_iters=10)
 # print('Time to fit: %s' % str(time.time() - s))
 
-# print('Model fitted')
-# X1_, X2_ = pcca.sample(200)
-# print('Sampling done')
+print('Model fitted')
+X1_, X2_ = pcca.sample(200)
+print('Sampling done')
 
 fig, ax = plt.subplots()
 # ax.scatter(X1[:, 0], X1[:, 1], c='red', marker='.')

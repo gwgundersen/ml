@@ -179,32 +179,6 @@ class PCCA(Model):
         """
         p, n = X.shape
 
-        k = self.n_components
-        Ez = self.E_z_given_x(Lambda, Psi, X)
-        Ezz = self.E_zzT_given_x(Lambda, Psi, X, k)
-
-        A = mm(mm(X.T, inv(Psi)), X)
-        B = -2 * (mm(mm(mm(X.T, inv(Psi)), Lambda), Ez))
-        C = tr(mm(mm(mm(Lambda.T, inv(Psi)), Lambda), Ezz))
-        D = -n / 2. * log(det(Psi))
-        Q = -1 / 2. * (diag(A) + diag(B) + C).sum() + D
-
-        neg_Q = -Q  # Code clarity: don't miss that negative sign.
-        return neg_Q
-
-# ------------------------------------------------------------------------------
-
-    def neg_log_likelihood_vec(self, X, Lambda, Psi):
-        """Compute negative log-likelihood.
-
-        For a derivation of the log-likelihood Q, see Appendix B in:
-
-            The EM Algorithm for Mixtures of Factor Analyzers
-            Ghahramani and Hinton
-            http://mlg.eng.cam.ac.uk/zoubin/papers/tr-96-1.pdf
-        """
-        p, n = X.shape
-
         k   = self.n_components
         Ez  = self.E_z_given_x(Lambda, Psi, X)
         Ezz = self.E_zzT_given_x(Lambda, Psi, X, k)
