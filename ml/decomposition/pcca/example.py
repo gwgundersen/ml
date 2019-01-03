@@ -20,6 +20,7 @@ pcca = PCCA(n_components=2)
 s = time.time()
 pcca.fit([X1, X2], n_iters=100)
 print('Time to fit: %s' % str(time.time() - s))
+X1_, X2_ = pcca.sample(200)
 
 # pcca = PCCA(n_components=2, rank_k=k)
 # s = time.time()
@@ -31,11 +32,12 @@ print('Time to fit: %s' % str(time.time() - s))
 # print('Sampling done')
 
 fig, ax = plt.subplots()
-# ax.scatter(X1[:, 0], X1[:, 1], c='red', marker='.')
-# ax.scatter(X2[:, 0], X2[:, 1], c='blue', marker='.')
-# ax.scatter(X1_[:, 0], X1_[:, 1], c='orange', marker='*')
-# ax.scatter(X2_[:, 0], X2_[:, 1], c='cyan', marker='*')
+ax.scatter(X1[:, 0], X1[:, 1], c='red', marker='.')
+ax.scatter(X2[:, 0], X2[:, 1], c='blue', marker='.')
+ax.scatter(X1_[:, 0], X1_[:, 1], c='orange', marker='*')
+ax.scatter(X2_[:, 0], X2_[:, 1], c='cyan', marker='*')
 
-plt.scatter(list(range(len(pcca.nlls))), pcca.nlls)
+# pcca.nlls = pcca.nlls[1:]
+# plt.scatter(list(range(len(pcca.nlls))), pcca.nlls)
 
 plt.show()

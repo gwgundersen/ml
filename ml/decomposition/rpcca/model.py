@@ -25,7 +25,7 @@ Normal = np.random.multivariate_normal
 
 # ------------------------------------------------------------------------------
 
-class PCCA(Model):
+class RPCCA(Model):
 
     def __init__(self, n_components, rank_k=None):
         """
@@ -67,9 +67,9 @@ class PCCA(Model):
 
         Lambda, Psi = self._init_params(p1, p2)
         for i in range(n_iters):
-            # print('Iter: %s' % i)
             Lambda_new, Psi_new = self._em_step(X, Lambda, Psi, n, k)
             nll = self.neg_log_likelihood(X, Lambda, Psi)
+            print('%s: %s' % (i, nll))
             nlls.append(nll)
             Lambda = Lambda_new
             Psi    = Psi_new
@@ -178,19 +178,19 @@ class PCCA(Model):
             http://mlg.eng.cam.ac.uk/zoubin/papers/tr-96-1.pdf
         """
         p, n = X.shape
+        k = self.n_components
+        Q = 0
 
-        k   = self.n_components
-        Ez  = self.E_z_given_x(Lambda, Psi, X)
-        Ezz = self.E_zzT_given_x(Lambda, Psi, X, k)
+        for xi in X.T:
+            Ez  = self.E_z_given_x(Lambda, Psi, xi)
+            Ezz = self.E_zzT_given_x(Lambda, Psi, xi, k)
+            A = mm(mm(xi.T, inv(Psi)), xi)
+            B = -2 * (mm(mm(mm(xi.T, inv(Psi)), Lambda), Ez))
+            C = tr(mm(mm(mm(Lambda.T, inv(Psi)), Lambda), Ezz))
+            Q += A + B + C
 
-        inv_Psi   = inv(Psi)
-        yT_invPsi = mm(X.T, inv_Psi)
-
-        A = mm(yT_invPsi, X)
-        B = -2 * (mm(mm(yT_invPsi, Lambda), Ez))
-        C = -tr(mm(mm(mm(Lambda.T, inv_Psi), Lambda), Ezz))
-        D = -n/2. * log(det(Psi))
-        Q = -1/2. * (diag(A) + diag(B) + C + D).sum()
+        D = -n / 2. * log(det(Psi))
+        Q += D
 
         neg_Q = -Q  # Code clarity: don't miss that negative sign.
         return neg_Q
@@ -204,7 +204,7 @@ class PCCA(Model):
 # ------------------------------------------------------------------------------
 
     def E_zzT_given_x(self, L, P, X, k):
-        _, N = X.shape
+        N = X.shape[0]
         beta = mm(L.T, self.inv(mm(L, L.T) + P))
         return N * (np.eye(k) - mm(beta, L)) + mm(mm(beta, X), mm(X.T, beta.T))
 

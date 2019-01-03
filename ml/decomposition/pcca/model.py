@@ -10,7 +10,6 @@ Probabilistic canonical correlation analysis. For references in comments:
 
 import numpy as np
 from   ml.model import Model
-from   ml import linalg as LA
 
 # ------------------------------------------------------------------------------
 
@@ -27,7 +26,7 @@ Normal = np.random.multivariate_normal
 
 class PCCA(Model):
 
-    def __init__(self, n_components, rank_k=None):
+    def __init__(self, n_components):
         """
         Initialize the probabilistic CCA model.
 
@@ -37,7 +36,6 @@ class PCCA(Model):
         :return:             None.
         """
         self.n_components = n_components
-        self.rank_k = rank_k
 
 # ------------------------------------------------------------------------------
 
@@ -113,7 +111,7 @@ class PCCA(Model):
 
     def _em_step(self, X, Lambda, Psi, n, k):
         """
-        Perform Expectation–Maximization on the parameters Lambda and Psi. See
+        Perform Expectation-Maximization on the parameters Lambda and Psi. See
         my blog post on factor analysis:
 
         http://gregorygundersen.com/blog/2018/08/08/factor-analysis/
@@ -129,7 +127,7 @@ class PCCA(Model):
         Exp          = self.E_z_given_x(Lambda, Psi, X)
         Lambda_lterm = dot(X, Exp.T)
         Lambda_rterm = self.E_zzT_given_x(Lambda, Psi, X, k)
-        Lambda_star  = dot(Lambda_lterm, self.inv(Lambda_rterm))
+        Lambda_star  = dot(Lambda_lterm, inv(Lambda_rterm))
 
         # Update Psi.
         # ======================================================================
@@ -178,23 +176,26 @@ class PCCA(Model):
             http://mlg.eng.cam.ac.uk/zoubin/papers/tr-96-1.pdf
         """
         p, n = X.shape
-
         k = self.n_components
-        Ez = self.E_z_given_x(Lambda, Psi, X)
-        Ezz = self.E_zzT_given_x(Lambda, Psi, X, k)
+        Q = 0
 
-        A = mm(mm(X.T, inv(Psi)), X)
-        B = -2 * (mm(mm(mm(X.T, inv(Psi)), Lambda), Ez))
-        C = tr(mm(mm(mm(Lambda.T, inv(Psi)), Lambda), Ezz))
+        Ez  = self.E_z_given_x(Lambda, Psi, X).T
+        Ezz = self.E_zzT_given_x(Lambda, Psi, X, k).T
+        assert Ezz.shape == (k, k)
+        A   = np.diag(mm(mm(X.T, inv(Psi)), X))
+        B   = -2 * np.diag(mm(mm(mm(X.T, inv(Psi)), Lambda), Ez.T))
+        C   = tr(mm(mm(mm(Lambda.T, inv(Psi)), Lambda), Ezz))
+        Q  += (A + B).sum() + C
+
         D = -n / 2. * log(det(Psi))
-        Q = -1 / 2. * (diag(A) + diag(B) + C).sum() + D
+        Q += D
 
         neg_Q = -Q  # Code clarity: don't miss that negative sign.
         return neg_Q
 
 # ------------------------------------------------------------------------------
 
-    def neg_log_likelihood_vec(self, X, Lambda, Psi):
+    def neg_log_likelihood_archive(self, X, Lambda, Psi):
         """Compute negative log-likelihood.
 
         For a derivation of the log-likelihood Q, see Appendix B in:
@@ -204,19 +205,19 @@ class PCCA(Model):
             http://mlg.eng.cam.ac.uk/zoubin/papers/tr-96-1.pdf
         """
         p, n = X.shape
+        k = self.n_components
+        Q = 0
 
-        k   = self.n_components
-        Ez  = self.E_z_given_x(Lambda, Psi, X)
-        Ezz = self.E_zzT_given_x(Lambda, Psi, X, k)
+        for xi in X.T:
+            Ez  = self.E_z_given_x(Lambda, Psi, xi)
+            Ezz = self.E_zzT_given_x(Lambda, Psi, xi, k)
+            A = mm(mm(xi.T, inv(Psi)), xi)
+            B = -2 * (mm(mm(mm(xi.T, inv(Psi)), Lambda), Ez))
+            C = tr(mm(mm(mm(Lambda.T, inv(Psi)), Lambda), Ezz))
+            Q += A + B + C
 
-        inv_Psi   = inv(Psi)
-        yT_invPsi = mm(X.T, inv_Psi)
-
-        A = mm(yT_invPsi, X)
-        B = -2 * (mm(mm(yT_invPsi, Lambda), Ez))
-        C = -tr(mm(mm(mm(Lambda.T, inv_Psi), Lambda), Ezz))
-        D = -n/2. * log(det(Psi))
-        Q = -1/2. * (diag(A) + diag(B) + C + D).sum()
+        D = -n / 2. * log(det(Psi))
+        Q += D
 
         neg_Q = -Q  # Code clarity: don't miss that negative sign.
         return neg_Q
@@ -224,19 +225,19 @@ class PCCA(Model):
 # ------------------------------------------------------------------------------
 
     def E_z_given_x(self, L, P, X):
-        beta  = mm(L.T, self.inv(mm(L, L.T) + P))
+        beta = mm(L.T, inv(mm(L, L.T) + P))
         return mm(beta, X)
 
 # ------------------------------------------------------------------------------
 
     def E_zzT_given_x(self, L, P, X, k):
-        _, N = X.shape
-        beta = mm(L.T, self.inv(mm(L, L.T) + P))
-        return N * (np.eye(k) - mm(beta, L)) + mm(mm(beta, X), mm(X.T, beta.T))
-
-# ------------------------------------------------------------------------------
-
-    def inv(self, X):
-        if self.rank_k:
-            return LA.rinv(X, self.rank_k)
-        return np.linalg.inv(X)
+        beta = mm(L.T, inv(mm(L, L.T) + P))
+        bX   = mm(beta, X)
+        if len(X.shape) == 2:
+            # See here for details: https://stackoverflow.com/questions/48498662/
+            _, N = X.shape
+            bXXb = np.einsum('ib,ob->io', bX, bX)
+            return N * (np.eye(k) - mm(beta, L)) + bXXb
+        else:
+            bXXb = np.outer(bX, bX.T)
+            return np.eye(k) - mm(beta, L) + bXXb
