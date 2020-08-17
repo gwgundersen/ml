@@ -125,20 +125,20 @@ class ProbabilisticCCA:
 
 import matplotlib.pyplot as plt
 from   _datasets import load_lowrankcov
-from   sklearn.cross_decomposition import CCA
 
 
 k = 10
 X1, X2 = load_lowrankcov(N=200, P=50, Q=40, k=k)
 
 pcca = ProbabilisticCCA(n_components=2, n_iters=100)
-Z_pcca = pcca.fit_transform(X1, X2)
-
-cca = CCA(n_components=2)
-Z_cca1, Z_cca2 = cca.fit_transform(X1, X2)
+pcca.fit(X1, X2)
+X1_, X2_ = pcca.sample(200)
 
 fig, (ax1, ax2) = plt.subplots(1, 2)
-ax1.imshow(cca.x_loadings_)
-ax2.imshow(pcca.W[:50])
+ax1.scatter(X1[:, 0], X1[:, 1])
+ax1.scatter(X2[:, 0], X2[:, 1])
+ax2.scatter(X1_[:, 0], X1_[:, 1])
+ax2.scatter(X2_[:, 0], X2_[:, 1])
+
 plt.show()
 # plt.savefig('_figures/pcca.png')
