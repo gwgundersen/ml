@@ -27,8 +27,12 @@ class ProbabilisticCCA:
         """Fit model via EM.
         """
         self._init_params(X1, X2)
+        np.linalg.cholesky(self.Psi)
+        print('is psd')
         for _ in range(self.n_iters):
+            print(_)
             self._em_step()
+            np.linalg.cholesky(self.Psi)
 
     def transform(self, X1, X2):
         """Embed data using fitted model.
